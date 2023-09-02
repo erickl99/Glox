@@ -58,7 +58,7 @@ func run(source string) {
     lscanner := NewLexer(source)
     tokens := lscanner.scan_tokens()
     parser := Parser{tokens: tokens}
-    expr, err := parser.parse()
+    stmts, err := parser.parse()
     if err != nil {
         fmt.Println(err)
         return
@@ -67,8 +67,7 @@ func run(source string) {
         fmt.Println("Uh oh")
         return
     }
-    fmt.Println(print(expr))
-    interpret(expr)
+    interpret(stmts)
     if run_error {
         return
     }

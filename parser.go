@@ -11,12 +11,130 @@ type Parser struct {
     current int
 }
 
-func (ps *Parser) parse() (Expr, error) {
-    return ps.expression()
+type ParseError struct {
+    message string
+}
+
+func (pe ParseError) Error() string {
+    return pe.message
+}
+
+func (ps *Parser) parse() ([]Stmt, error) {
+    var statements []Stmt
+    for !ps.finished() {
+        stmt := ps.declaration()
+        statements = append(statements, stmt)
+    }
+    return statements, nil
+}
+
+func (ps *Parser) declaration() Stmt {
+    if ps.match(VAR) {
+        stmt, err := ps.var_declaration()
+        if err != nil {
+            ps.synchronize()
+            return nil
+        }
+        return stmt
+    }
+    stmt, err := ps.statement()
+    if err != nil {
+        ps.synchronize()
+        return nil
+    }
+    return stmt
+}
+
+func (ps *Parser) var_declaration() (Stmt, error) {
+    name, err := ps.consume(IDENTIFIER, "Expect variable name")
+    if err != nil {
+        return nil, err
+    }
+    var initializer Expr
+    if ps.match(EQUAL) {
+        val, err := ps.expression()
+        if err != nil {
+            return nil, err
+        }
+        initializer = val
+    }
+    ps.consume(SEMICOLON, "Expect ';' after variable declaration")
+    return Var{name, initializer}, nil
+}
+
+func (ps *Parser) statement() (Stmt, error){
+    if ps.match(PRINT) {
+        return ps.print_statement()
+    }
+    if ps.match(LEFT_BRACE) {
+        stmts, err := ps.block()
+        if err != nil {
+            return nil, err
+        }
+        return Block{stmts}, nil
+    }
+    return ps.expression_statement()
+}
+
+func (ps *Parser) block() ([]Stmt, error) {
+    var statements []Stmt
+    for !ps.check(RIGHT_BRACE) && !ps.finished() {
+        stmt := ps.declaration()
+        statements = append(statements, stmt)
+    }
+    _, err := ps.consume(RIGHT_BRACE, "Expected '}' after block")
+    if err != nil {
+        return nil, err
+    }
+    return statements, nil
+}
+
+func (ps *Parser) print_statement() (Stmt, error) {
+    value, err := ps.expression()
+    if err != nil {
+        return nil, err
+    }
+    _, err = ps.consume(SEMICOLON, "Expect ';' after value")
+    if err != nil {
+        return nil, err
+    }
+    return Print{value}, nil
+}
+
+func (ps *Parser) expression_statement() (Stmt, error) {
+    expr, err := ps.expression()
+    if err != nil {
+        return nil, err
+    }
+    _, err = ps.consume(SEMICOLON, "Expect ';' after expression")
+    if err != nil {
+        return nil, err
+    }
+    return Expression{expr}, nil
 }
 
 func (ps *Parser) expression() (Expr, error) {
-    return ps.equality()
+    return ps.assignment()
+}
+
+func (ps * Parser) assignment() (Expr, error) {
+    expr, err := ps.equality()
+    if err != nil {
+        return nil, err
+    }
+    if ps.match(EQUAL) {
+        equals := ps.previous()
+        value, err := ps.assignment()
+        if err != nil {
+            return nil, err
+        }
+        if assignee, ok := expr.(Variable); ok {
+            name := assignee.name
+            return Assign{name, value}, nil
+        }
+        ps.error(equals, "Invalid assignment target")
+    }
+    return expr, nil
 }
 
 func (ps *Parser) equality() (Expr, error) {
@@ -115,6 +233,9 @@ func (ps *Parser) primary() (Expr, error) {
         //fmt.Println("Matched a nil")
         return Literal{nil}, nil
     }
+    if ps.match(IDENTIFIER) {
+        return Variable{ps.previous()}, nil
+    }
 
     if ps.match(NUMBER, STRING) {
         //fmt.Println("Matched a number or string")
@@ -127,7 +248,10 @@ func (ps *Parser) primary() (Expr, error) {
         if err != nil {
             return nil, err
         }
-        ps.consume(RIGHT_PAREN, "Expect ')' after expression")
+        _, err = ps.consume(RIGHT_PAREN, "Expect ')' after expression")
+        if err != nil {
+            return nil, err
+        }
         return Grouping{expr}, nil
     }
     //fmt.Println("Matched a left paren")

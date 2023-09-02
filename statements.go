@@ -4,6 +4,13 @@ type Stmt interface {
     saccept()
 }
 
+type Block struct {
+    statements []Stmt
+}
+
+func (bl Block) saccept() {
+}
+
 type Expression struct {
     expr Expr
 }
@@ -16,4 +23,12 @@ type Print struct {
 }
 
 func (pr Print) saccept() {
+}
+
+type Var struct {
+    name Token
+    initializer Expr
+}
+
+func (vr Var) saccept() {
 }

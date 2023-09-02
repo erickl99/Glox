@@ -13,23 +13,75 @@ func (re RuntimeError) Error() string {
     return re.message
 }
 
-func interpret(expr Expr) {
-    value, err := evaluate(expr)
-    if err != nil {
-        runtime_error(err.(RuntimeError))
-        return
+var global_env Environment = Environment{values: make(map[string]Value)}
+
+func interpret(statements []Stmt) {
+    curr_env := global_env
+    for _, stmt := range statements {
+        err := execute(stmt, curr_env)
+        if err != nil {
+            runtime_error(err.(RuntimeError))
+            break
+        }
     }
-    fmt.Println(stringify(value))
 }
 
-func evaluate(exp Expr) (Value, error) {
+func execute(stmt Stmt, curr_env Environment) error {
+    switch t := stmt.(type) {
+        case Print:
+            value, err := evaluate(t.expr, curr_env)
+            if err != nil {
+                return err
+            }
+            fmt.Println(stringify(value))
+            return nil
+        case Expression:
+            value, err := evaluate(t.expr, curr_env)
+            if err != nil {
+                return err
+            }
+            fmt.Println(stringify(value))
+            return nil
+        case Block:
+            block_env := Environment{enclosing: &curr_env, values: make(map[string]Value)}
+            err := execute_block(t.statements, block_env)
+            if err != nil {
+                return err
+            }
+            return nil
+        case Var:
+            var value Value
+            if t.initializer != nil {
+                val, err := evaluate(t.initializer, curr_env)
+                if err != nil {
+                    return err
+                }
+                value = val
+            }
+            curr_env.define(t.name.lexeme, value)
+            return nil
+    }
+    return RuntimeError{message: "Internal error, unknown statement type encountered"}
+}
+
+func execute_block(statements []Stmt, block_env Environment) error {
+    for _, stmt := range statements {
+        err := execute(stmt, block_env)
+        if err != nil {
+            break
+        }
+    }
+    return nil
+}
+
+func evaluate(exp Expr, curr_env Environment) (Value, error) {
     switch t := exp.(type) {
         case Literal:
             return t.value, nil
         case Grouping:
-            return evaluate(t.expression)
+            return evaluate(t.expression, curr_env)
         case Unary:
-            right, r_err := evaluate(t.right)
+            right, r_err := evaluate(t.right, curr_env)
             if r_err != nil {
                 return nil, r_err
             }
@@ -43,12 +95,24 @@ func evaluate(exp Expr) (Value, error) {
                 case BANG:
                     return !is_truthy(right), nil
             }
+        case Variable:
+            return curr_env.get(t.name)
+        case Assign:
+            value, err := evaluate(t.value, curr_env)
+            if err != nil {
+                return nil, err
+            }
+            err = curr_env.assign(t.name, value)
+            if err != nil {
+                return nil, err
+            }
+            return value, nil
         case Binary:
-            left, l_err := evaluate(t.left)
+            left, l_err := evaluate(t.left, curr_env)
             if l_err != nil {
                 return nil, l_err
             }
-            right, r_err := evaluate(t.right)
+            right, r_err := evaluate(t.right, curr_env)
             if r_err != nil {
                 return nil, r_err
             }
