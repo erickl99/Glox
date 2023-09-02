@@ -20,10 +20,16 @@ func (ps *Parser) expression() (Expr, error) {
 }
 
 func (ps *Parser) equality() (Expr, error) {
-    expr, _ := ps.comparison()
+    expr, err := ps.comparison()
+    if err != nil {
+        return nil, err
+    }
     for ps.match(BANG_EQUAL, EQUAL_EQUAL) {
         op := ps.previous()
-        right, _ := ps.comparison()
+        right, err := ps.comparison()
+        if err != nil {
+            return nil, err
+        }
         //fmt.Println("Matched binary in equality")
         expr = Binary{expr, op, right}
     }
@@ -31,10 +37,16 @@ func (ps *Parser) equality() (Expr, error) {
 }
 
 func (ps *Parser) comparison() (Expr, error) {
-    expr, _ := ps.term()
+    expr, err := ps.term()
+    if err != nil {
+        return nil, err
+    }
     for ps.match(GREATER, GREATER_EQUAL, LESS, LESS_EQUAL) {
         op := ps.previous()
-        right, _ := ps.term()
+        right, err := ps.term()
+        if err != nil {
+            return nil, err
+        }
         //fmt.Println("Matched binary in comp")
         expr = Binary{expr, op, right}
     }
@@ -42,11 +54,16 @@ func (ps *Parser) comparison() (Expr, error) {
 }
 
 func (ps *Parser) term() (Expr, error) {
-    expr, _ := ps.factor()
-
+    expr, err := ps.factor()
+    if err != nil {
+        return nil, err
+    }
     for ps.match(MINUS, PLUS) {
         op := ps.previous()
-        right, _ := ps.factor()
+        right, err := ps.factor()
+        if err != nil {
+            return nil, err
+        }
         //fmt.Println("Matched binary in term")
         expr = Binary{expr, op, right}
     }
@@ -55,11 +72,16 @@ func (ps *Parser) term() (Expr, error) {
 }
 
 func (ps *Parser) factor() (Expr, error) {
-    expr, _ := ps.unary()
-
+    expr, err := ps.unary()
+    if err != nil {
+        return nil, err
+    }
     for ps.match(SLASH, STAR) {
         op := ps.previous()
-        right, _ := ps.unary()
+        right, err := ps.unary()
+        if err != nil {
+            return nil, err
+        }
         //fmt.Println("Matched binary in factor")
         expr = Binary{expr, op, right}
     }
@@ -70,7 +92,10 @@ func (ps *Parser) factor() (Expr, error) {
 func (ps *Parser) unary() (Expr, error) {
     if ps.match(BANG, MINUS) {
         op := ps.previous()
-        right, _ := ps.unary()
+        right, err := ps.unary()
+        if err != nil {
+            return nil, err
+        }
         //fmt.Println("Matched unary")
         return Unary{op, right}, nil
     }
@@ -98,12 +123,15 @@ func (ps *Parser) primary() (Expr, error) {
 
     if ps.match(LEFT_PAREN) {
         //fmt.Println("Matched a left paren")
-        expr, _ := ps.expression()
+        expr, err := ps.expression()
+        if err != nil {
+            return nil, err
+        }
         ps.consume(RIGHT_PAREN, "Expect ')' after expression")
         return Grouping{expr}, nil
     }
     //fmt.Println("Matched a left paren")
-    return Binary{}, errors.New("Expect expression")
+    return nil, errors.New("Expect expression")
 }
 
 func (ps *Parser) match(t_types ...TokenType) bool {

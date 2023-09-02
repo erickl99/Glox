@@ -1,7 +1,7 @@
 package main
 
 type Expr interface {
-    accept() Value
+    accept()
 }
 
 type Assign struct {
@@ -9,8 +9,7 @@ type Assign struct {
     value Expr
 }
 
-func (as Assign) accept() Value {
-    return 0
+func (as Assign) accept() {
 }
 
 type Binary struct {
@@ -19,8 +18,7 @@ type Binary struct {
     right Expr
 }
 
-func (bn Binary) accept() Value {
-    return 0
+func (bn Binary) accept() {
 }
 
 type Call struct {
@@ -29,8 +27,7 @@ type Call struct {
     arguemnts []Expr
 }
 
-func (ca Call) accept() Value {
-    return 0
+func (ca Call) accept() {
 }
 
 type Get struct {
@@ -38,24 +35,21 @@ type Get struct {
     name Token
 }
 
-func (gt Get) accept() Value {
-    return 0
+func (gt Get) accept() {
 }
 
 type Grouping struct {
     expression Expr
 }
 
-func (gp Grouping) accept() Value {
-    return 0
+func (gp Grouping) accept() {
 }
 
 type Literal struct {
     value Value
 }
 
-func (lt Literal) accept() Value {
-    return 0
+func (lt Literal) accept() {
 }
 
 type Logical struct {
@@ -64,8 +58,7 @@ type Logical struct {
     right Expr
 }
 
-func (lg Logical) accept() Value {
-    return 0
+func (lg Logical) accept() {
 }
 
 type Set struct {
@@ -74,8 +67,7 @@ type Set struct {
     value Expr
 }
 
-func (st Set) accept() Value {
-    return 0
+func (st Set) accept() {
 }
 
 type Super struct {
@@ -83,16 +75,14 @@ type Super struct {
     method Token
 }
 
-func (sp Super) accept() Value {
-    return 0
+func (sp Super) accept() {
 }
 
 type This struct {
     keyword Token
 }
 
-func (th This) accept() Value {
-    return 0
+func (th This) accept() {
 }
 
 type Unary struct {
@@ -100,14 +90,12 @@ type Unary struct {
     right Expr
 }
 
-func (un Unary) accept() Value {
-    return 0
+func (un Unary) accept() {
 }
 
 type Variable struct {
     name Token
 }
 
-func (vr Variable) accept() Value {
-    return 0
+func (vr Variable) accept() {
 }
