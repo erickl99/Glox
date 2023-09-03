@@ -66,6 +66,9 @@ func (ps *Parser) statement() (Stmt, error){
     if ps.match(PRINT) {
         return ps.print_statement()
     }
+    if ps.match(IF) {
+        return ps.if_statement()
+    }
     if ps.match(LEFT_BRACE) {
         stmts, err := ps.block()
         if err != nil {
@@ -111,6 +114,33 @@ func (ps *Parser) expression_statement() (Stmt, error) {
         return nil, err
     }
     return Expression{expr}, nil
+}
+
+func (ps *Parser) if_statement() (Stmt, error) {
+    _, err := ps.consume(LEFT_PAREN, "Expect  '(' after if")
+    if err != nil {
+        return nil, err
+    }
+    cond, err := ps.expression()
+    if err != nil {
+        return nil, err
+    }
+    _, err = ps.consume(RIGHT_PAREN, "Expect  '(' after if")
+    if err != nil {
+        return nil, err
+    }
+    then_branch, err := ps.statement()
+    if err != nil {
+        return nil, err
+    }
+    var else_branch Stmt = nil
+    if ps.match(ELSE) {
+        else_branch, err = ps.statement()
+        if err != nil {
+            return nil, err
+        }
+    }
+    return If{cond,then_branch, else_branch}, nil
 }
 
 func (ps *Parser) expression() (Expr, error) {

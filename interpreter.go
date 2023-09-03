@@ -49,6 +49,16 @@ func execute(stmt Stmt, curr_env Environment) error {
                 return err
             }
             return nil
+        case If:
+            val, err := evaluate(t.condition, curr_env)
+            if err != nil {
+                return err
+            }
+            if is_truthy(val) {
+                return execute(t.then_branch, curr_env)
+            } else {
+                return execute(t.else_branch, curr_env)
+            }
         case Var:
             var value Value
             if t.initializer != nil {

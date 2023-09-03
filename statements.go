@@ -32,3 +32,12 @@ type Var struct {
 
 func (vr Var) saccept() {
 }
+
+type If struct {
+    condition Expr
+    then_branch Stmt
+    else_branch Stmt
+}
+
+func (iff If) saccept() {
+}
