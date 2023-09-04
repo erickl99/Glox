@@ -125,7 +125,7 @@ func (ps *Parser) if_statement() (Stmt, error) {
     if err != nil {
         return nil, err
     }
-    _, err = ps.consume(RIGHT_PAREN, "Expect  '(' after if")
+    _, err = ps.consume(RIGHT_PAREN, "Expect  ')' after if")
     if err != nil {
         return nil, err
     }
@@ -147,13 +147,12 @@ func (ps *Parser) expression() (Expr, error) {
     return ps.assignment()
 }
 
-func (ps * Parser) assignment() (Expr, error) {
-    expr, err := ps.equality()
+func (ps *Parser) assignment() (Expr, error) {
+    expr, err := ps.or()
     if err != nil {
         return nil, err
     }
-    if ps.match(EQUAL) {
-        equals := ps.previous()
+    if ps.match(EQUAL) { equals := ps.previous()
         value, err := ps.assignment()
         if err != nil {
             return nil, err
@@ -163,6 +162,38 @@ func (ps * Parser) assignment() (Expr, error) {
             return Assign{name, value}, nil
         }
         ps.error(equals, "Invalid assignment target")
+    }
+    return expr, nil
+}
+
+func (ps *Parser) or() (Expr, error) {
+    expr, err := ps.and()
+    if err != nil {
+        return nil, err
+    }
+    for ps.match(OR) {
+        op := ps.previous()
+        right, err := ps.and()
+        if err != nil {
+            return nil, err
+        }
+        expr = Logical{expr, op, right}
+    }
+    return expr, nil
+}
+
+func (ps *Parser) and() (Expr, error) {
+    expr, err := ps.equality()
+    if err != nil {
+        return nil, err
+    }
+    for ps.match(AND) {
+        op := ps.previous()
+        right, err := ps.equality()
+        if err != nil {
+            return nil, err
+        }
+        expr = Logical{expr, op, right}
     }
     return expr, nil
 }
@@ -261,7 +292,7 @@ func (ps *Parser) primary() (Expr, error) {
     }
     if ps.match(NIL) {
         //fmt.Println("Matched a nil")
-        return Literal{nil}, nil
+        return Literal{value: nil}, nil
     }
     if ps.match(IDENTIFIER) {
         return Variable{ps.previous()}, nil

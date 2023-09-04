@@ -56,9 +56,10 @@ func execute(stmt Stmt, curr_env Environment) error {
             }
             if is_truthy(val) {
                 return execute(t.then_branch, curr_env)
-            } else {
+            } else if t.else_branch != nil {
                 return execute(t.else_branch, curr_env)
             }
+            return nil
         case Var:
             var value Value
             if t.initializer != nil {
@@ -107,6 +108,19 @@ func evaluate(exp Expr, curr_env Environment) (Value, error) {
             }
         case Variable:
             return curr_env.get(t.name)
+        case Logical:
+            left, err := evaluate(t.left, curr_env)
+            if err != nil {
+                return nil, err
+            }
+            if t.operator.t_type == OR {
+                if is_truthy(left) {
+                    return left, nil
+                }
+            } else if !is_truthy(left) {
+                return left, nil
+            }
+            return evaluate(t.right, curr_env)
         case Assign:
             value, err := evaluate(t.value, curr_env)
             if err != nil {
