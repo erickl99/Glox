@@ -41,3 +41,11 @@ type If struct {
 
 func (iff If) saccept() {
 }
+
+type While struct {
+    condition Expr
+    body Stmt
+}
+
+func (wh While) saccept() {
+}

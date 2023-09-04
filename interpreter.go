@@ -40,7 +40,9 @@ func execute(stmt Stmt, curr_env Environment) error {
             if err != nil {
                 return err
             }
-            fmt.Println(stringify(value))
+            if in_repl {
+                fmt.Println(stringify(value))
+            }
             return nil
         case Block:
             block_env := Environment{enclosing: &curr_env, values: make(map[string]Value)}
@@ -58,6 +60,20 @@ func execute(stmt Stmt, curr_env Environment) error {
                 return execute(t.then_branch, curr_env)
             } else if t.else_branch != nil {
                 return execute(t.else_branch, curr_env)
+            }
+            return nil
+        case While:
+            for {
+                val, err := evaluate(t.condition, curr_env)
+                if err!= nil {
+                    return err
+                }
+                if !is_truthy(val) {
+                    break
+                }
+                if err = execute(t.body, curr_env); err != nil {
+                    return err
+                }
             }
             return nil
         case Var:

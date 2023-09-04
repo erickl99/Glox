@@ -8,6 +8,7 @@ import (
 
 var static_error = false
 var run_error = false
+var in_repl = false
 
 func main() {
     if len(os.Args) > 2 {
@@ -37,6 +38,7 @@ func run_file(name string) {
 }
 
 func run_prompt() {
+    in_repl = true
     scanner := bufio.NewScanner(os.Stdin)
     fmt.Print("> ")
     for scanner.Scan() {

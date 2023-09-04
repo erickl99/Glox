@@ -69,6 +69,12 @@ func (ps *Parser) statement() (Stmt, error){
     if ps.match(IF) {
         return ps.if_statement()
     }
+    if ps.match(WHILE) {
+        return ps.while_statement()
+    }
+    if ps.match(FOR) {
+        return ps.for_statement()
+    }
     if ps.match(LEFT_BRACE) {
         stmts, err := ps.block()
         if err != nil {
@@ -125,7 +131,7 @@ func (ps *Parser) if_statement() (Stmt, error) {
     if err != nil {
         return nil, err
     }
-    _, err = ps.consume(RIGHT_PAREN, "Expect  ')' after if")
+    _, err = ps.consume(RIGHT_PAREN, "Expect  ')' after condition")
     if err != nil {
         return nil, err
     }
@@ -141,6 +147,83 @@ func (ps *Parser) if_statement() (Stmt, error) {
         }
     }
     return If{cond,then_branch, else_branch}, nil
+}
+
+func (ps *Parser) while_statement() (Stmt, error) {
+    _, err := ps.consume(LEFT_PAREN, "Expect '(' after 'while'")
+    if err != nil {
+        return nil, err
+    }
+    expr, err := ps.expression()
+    if err != nil {
+        return nil, err
+    }
+    _, err = ps.consume(RIGHT_PAREN, "Expect ')' after condition")
+    if err != nil {
+        return nil, err
+    }
+    body, err := ps.statement()
+    if err != nil {
+        return nil, err
+    }
+    return While{expr, body}, nil
+}
+
+func (ps *Parser) for_statement() (Stmt, error) {
+    _, err := ps.consume(LEFT_PAREN, "Expect '(' after 'for'")
+    if err != nil {
+        return nil, err
+    }
+    var initializer Stmt
+    if ps.match(SEMICOLON) {
+        initializer = nil
+    } else if ps.match(VAR) {
+        initializer, err = ps.var_declaration()
+    } else {
+        initializer, err = ps.expression_statement()
+    }
+    if err != nil {
+        return nil, err
+    }
+    var condition Expr = nil
+    if !ps.match(SEMICOLON) {
+        condition, err = ps.expression()
+        if err != nil {
+            return nil, err
+        }
+    }
+    _, err = ps.consume(SEMICOLON, "Expect ';' after loop condition")
+    if err != nil {
+        return nil, err
+    }
+    var increment Expr = nil
+    if !ps.check(RIGHT_PAREN) {
+        increment, err = ps.expression()
+        if err != nil {
+            return nil, err
+        }
+    }
+    _, err = ps.consume(RIGHT_PAREN, "Expect ')' after for clauses")
+    if err != nil {
+        return nil, err
+    }
+    body, err := ps.statement()
+    if err != nil {
+        return nil, err
+    }
+    if increment != nil  {
+        stmts := []Stmt{body, Expression{increment}}
+        body = Block{stmts}
+    }
+    if condition == nil {
+        condition = Literal{true}
+    }
+    body = While{condition, body}
+    if initializer != nil {
+        stmts := []Stmt{initializer, body}
+        body = Block{stmts}
+    }
+    return body, nil
 }
 
 func (ps *Parser) expression() (Expr, error) {
