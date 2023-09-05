@@ -1,0 +1,52 @@
+package main
+
+import (
+	"time"
+)
+
+type LoxCallable interface {
+    call(globals Environment, arguments []Value) Value
+    arity() int
+}
+
+// Global functions
+
+type Clock struct {}
+
+func (cl Clock) call(globals Environment, arguments []Value) Value {
+    return time.Now().UnixMilli()
+}
+
+func (cl Clock) arity() int {
+    return 0
+}
+
+func (cl Clock) String() string {
+    return "<native fn>"
+}
+
+
+// Type representing Lox functions
+type LoxFunction struct {
+    declaration Func
+}
+
+func (lf LoxFunction) call(local_env Environment, arguments []Value) Value {
+    for i := 0; i < len(lf.declaration.params); i++ {
+        local_env.define(lf.declaration.params[i].lexeme, arguments[i])
+    }
+    err := execute_block(lf.declaration.body, &local_env)
+    if err != nil {
+        runtime_error(RuntimeError{message: err.Error()})
+        return nil
+    }
+    return nil
+}
+
+func (lf LoxFunction) arity() int {
+    return len(lf.declaration.params)
+}
+
+func (lf LoxFunction) String() string {
+    return "<fn " + lf.declaration.name.lexeme + ">"
+}

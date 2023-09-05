@@ -49,3 +49,12 @@ type While struct {
 
 func (wh While) saccept() {
 }
+
+type Func struct {
+    name Token
+    params []Token
+    body []Stmt
+}
+
+func (fc Func) saccept() {
+}

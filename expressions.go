@@ -22,9 +22,9 @@ func (bn Binary) accept() {
 }
 
 type Call struct {
-    calle Expr
+    callee Expr
     paren Token
-    arguemnts []Expr
+    arguments []Expr
 }
 
 func (ca Call) accept() {

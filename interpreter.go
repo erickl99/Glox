@@ -13,10 +13,14 @@ func (re RuntimeError) Error() string {
     return re.message
 }
 
-var global_env Environment = Environment{values: make(map[string]Value)}
+var global_funcs = map[string]Value{"clock": Clock{}}
+
+var globals Environment = Environment{values: global_funcs}
+
+var init_env *Environment = &globals
 
 func interpret(statements []Stmt) {
-    curr_env := global_env
+    curr_env := init_env
     for _, stmt := range statements {
         err := execute(stmt, curr_env)
         if err != nil {
@@ -26,7 +30,7 @@ func interpret(statements []Stmt) {
     }
 }
 
-func execute(stmt Stmt, curr_env Environment) error {
+func execute(stmt Stmt, curr_env *Environment) error {
     switch t := stmt.(type) {
         case Print:
             value, err := evaluate(t.expr, curr_env)
@@ -40,13 +44,14 @@ func execute(stmt Stmt, curr_env Environment) error {
             if err != nil {
                 return err
             }
+            // Not the best way to do this but it works for now. Find a better way in the rewrite?
             if in_repl {
                 fmt.Println(stringify(value))
             }
             return nil
         case Block:
-            block_env := Environment{enclosing: &curr_env, values: make(map[string]Value)}
-            err := execute_block(t.statements, block_env)
+            block_env := Environment{enclosing: curr_env, values: make(map[string]Value)}
+            err := execute_block(t.statements, &block_env)
             if err != nil {
                 return err
             }
@@ -87,21 +92,26 @@ func execute(stmt Stmt, curr_env Environment) error {
             }
             curr_env.define(t.name.lexeme, value)
             return nil
+        case Func:
+            lox_func := LoxFunction{t}
+            curr_env.define(t.name.lexeme, lox_func)
+            return nil
     }
     return RuntimeError{message: "Internal error, unknown statement type encountered"}
 }
 
-func execute_block(statements []Stmt, block_env Environment) error {
+func execute_block(statements []Stmt, block_env *Environment) error {
     for _, stmt := range statements {
         err := execute(stmt, block_env)
         if err != nil {
-            break
+            // this used to break
+            return err
         }
     }
     return nil
 }
 
-func evaluate(exp Expr, curr_env Environment) (Value, error) {
+func evaluate(exp Expr, curr_env *Environment) (Value, error) {
     switch t := exp.(type) {
         case Literal:
             return t.value, nil
@@ -147,6 +157,28 @@ func evaluate(exp Expr, curr_env Environment) (Value, error) {
                 return nil, err
             }
             return value, nil
+        case Call:
+            callee, err := evaluate(t.callee, curr_env)
+            if err != nil {
+                return nil, err
+            }
+            var arguments []Value
+            for _, arg := range t.arguments {
+                val, err := evaluate(arg, curr_env)
+                if err != nil {
+                    return err, nil
+                }
+                arguments = append(arguments, val)
+            }
+            if lox_func, ok := callee.(LoxCallable); ok {
+                if lox_func.arity() != len(arguments) {
+                    msg := fmt.Sprintf("Expected %d arguments but got %d.", lox_func.arity(), len(arguments))
+                    return nil, RuntimeError{msg, t.paren}
+                }
+                return lox_func.call(*curr_env, arguments), nil
+            } else {
+                return nil, RuntimeError{"Can only call functions and classes", t.paren}
+            }
         case Binary:
             left, l_err := evaluate(t.left, curr_env)
             if l_err != nil {

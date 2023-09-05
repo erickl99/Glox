@@ -37,6 +37,14 @@ func (ps *Parser) declaration() Stmt {
         }
         return stmt
     }
+    if ps.match(FUN) {
+        stmt, err := ps.function("function")
+        if err != nil {
+            ps.synchronize()
+            return nil
+        }
+        return stmt
+    }
     stmt, err := ps.statement()
     if err != nil {
         ps.synchronize()
@@ -60,6 +68,50 @@ func (ps *Parser) var_declaration() (Stmt, error) {
     }
     ps.consume(SEMICOLON, "Expect ';' after variable declaration")
     return Var{name, initializer}, nil
+}
+
+func (ps *Parser) function(kind string) (Func, error) {
+    var new_function Func
+    name, err := ps.consume(IDENTIFIER, "Expect " + kind + " name")
+    if err != nil {
+        return new_function, err
+    }
+    _, err = ps.consume(LEFT_PAREN, "Expect '(' after function " + kind + " name")
+    if err != nil {
+        return new_function, err
+    }
+    var parameters []Token
+    if !ps.check(RIGHT_PAREN) {
+        for {
+            if len(parameters) >= 255 {
+                ps.error(ps.peek(), "Cannot have more than 255 parameters")
+            }
+            param, err := ps.consume(IDENTIFIER, "Expect parameter name")
+            if err != nil {
+                return new_function, err
+            }
+            parameters = append(parameters, param)
+            if !ps.match(COMMA) {
+                break
+            }
+        }
+    }
+    _, err = ps.consume(RIGHT_PAREN, "Expect ')' after parameters")
+    if err != nil {
+        return new_function, err
+    }
+    _, err = ps.consume(LEFT_BRACE, "Expect '{' before " + kind + " body")
+    if err != nil {
+        return new_function, err
+    }
+    body, err := ps.block()
+    if err != nil {
+        return new_function, err
+    }
+    new_function.name = name
+    new_function.params = parameters
+    new_function.body = body
+    return new_function, nil
 }
 
 func (ps *Parser) statement() (Stmt, error){
@@ -361,7 +413,49 @@ func (ps *Parser) unary() (Expr, error) {
         //fmt.Println("Matched unary")
         return Unary{op, right}, nil
     }
-    return ps.primary()
+    return ps.call()
+}
+
+func (ps *Parser) call() (Expr, error) {
+    expr, err := ps.primary()
+    if err != nil {
+        return nil, err
+    }
+    for {
+        if ps.match(LEFT_PAREN) {
+            expr, err = ps.finish_call(expr)
+            if err != nil {
+                return nil, err
+            }
+        } else {
+            break
+        }
+    }
+    return expr, nil
+}
+
+func (ps *Parser) finish_call(callee Expr) (Expr, error) {
+    var args []Expr
+    if !ps.check(RIGHT_PAREN) {
+        for {
+            expr, err := ps.expression()
+            if err != nil {
+                return nil, err
+            }
+            if len(args) >= 255 {
+                ps.error(ps.peek(), "Cannot have more than 255 arguments to a function")
+            }
+            args = append(args, expr)
+            if !ps.match(COMMA) {
+                break
+            }
+        }
+    }
+    paren, err := ps.consume(RIGHT_PAREN, "Expect ')' after arguments")
+    if err != nil {
+        return nil, err
+    }
+    return Call{callee, paren, args}, nil
 }
 
 func (ps *Parser) primary() (Expr, error) {
@@ -382,7 +476,6 @@ func (ps *Parser) primary() (Expr, error) {
     }
 
     if ps.match(NUMBER, STRING) {
-        //fmt.Println("Matched a number or string")
         return Literal{ps.previous().literal}, nil
     }
 

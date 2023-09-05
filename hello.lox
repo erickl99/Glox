@@ -1,9 +1,16 @@
-var a = 0;
-var temp;
-
-print "About to start loop";
-for (var b = 1; a < 10000; b = temp + b) {
-    print a;
-    temp = a;
-    a = b;
+var a = 24;
+var b = 43;
+print a + b;
+fun compare(num_one, num_two) {
+    if (num_one < num_two) {
+        print "num_one is smaller";
+    }
+    else if (num_two < num_one) {
+        print "num_two is smaller";
+    }
+    else {
+        print "both are same size";
+    }
 }
+
+compare(a, a);
