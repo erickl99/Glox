@@ -13,7 +13,15 @@ func (re RuntimeError) Error() string {
     return re.message
 }
 
-var global_funcs = map[string]Value{"clock": Clock{}}
+type ReturnVal struct {
+    value Value
+}
+
+func (rv ReturnVal) Error() string {
+    return stringify(rv.value)
+}
+
+var global_funcs = map[string]Value{"clock": Clock{}, "string": ToString{}}
 
 var globals Environment = Environment{values: global_funcs}
 
@@ -83,12 +91,12 @@ func execute(stmt Stmt, curr_env *Environment) error {
             return nil
         case Var:
             var value Value
+            var err error
             if t.initializer != nil {
-                val, err := evaluate(t.initializer, curr_env)
+                value, err = evaluate(t.initializer, curr_env)
                 if err != nil {
                     return err
                 }
-                value = val
             }
             curr_env.define(t.name.lexeme, value)
             return nil
@@ -96,6 +104,16 @@ func execute(stmt Stmt, curr_env *Environment) error {
             lox_func := LoxFunction{t}
             curr_env.define(t.name.lexeme, lox_func)
             return nil
+        case Return:
+            var value Value
+            var err error
+            if t.value != nil {
+                value, err = evaluate(t.value, curr_env)
+                if err != nil {
+                    return err
+                }
+            }
+            return ReturnVal{value}
     }
     return RuntimeError{message: "Internal error, unknown statement type encountered"}
 }
@@ -152,6 +170,7 @@ func evaluate(exp Expr, curr_env *Environment) (Value, error) {
             if err != nil {
                 return nil, err
             }
+            // fmt.Println("Going to assign: ", t.name, value)
             err = curr_env.assign(t.name, value)
             if err != nil {
                 return nil, err

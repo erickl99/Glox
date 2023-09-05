@@ -19,6 +19,7 @@ var keywords = map[string]TokenType{
     "this": THIS,
     "true": TRUE,
     "var": VAR,
+    "return": RETURN,
     "while": WHILE,
 }
 

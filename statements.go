@@ -58,3 +58,11 @@ type Func struct {
 
 func (fc Func) saccept() {
 }
+
+type Return struct {
+    keyword Token
+    value Expr
+}
+
+func (rn Return) saccept() {
+}

@@ -115,17 +115,20 @@ func (ps *Parser) function(kind string) (Func, error) {
 }
 
 func (ps *Parser) statement() (Stmt, error){
-    if ps.match(PRINT) {
-        return ps.print_statement()
+    if ps.match(FOR) {
+        return ps.for_statement()
     }
     if ps.match(IF) {
         return ps.if_statement()
     }
+    if ps.match(PRINT) {
+        return ps.print_statement()
+    }
+    if ps.match(RETURN) {
+        return ps.return_statement()
+    }
     if ps.match(WHILE) {
         return ps.while_statement()
-    }
-    if ps.match(FOR) {
-        return ps.for_statement()
     }
     if ps.match(LEFT_BRACE) {
         stmts, err := ps.block()
@@ -199,6 +202,20 @@ func (ps *Parser) if_statement() (Stmt, error) {
         }
     }
     return If{cond,then_branch, else_branch}, nil
+}
+
+func (ps *Parser) return_statement() (Stmt, error) {
+    keyword := ps.previous()
+    var value Expr
+    var err error
+    if !ps.check(SEMICOLON) {
+        value, err = ps.expression()
+        if err != nil {
+            return nil, err
+        }
+    }
+    _, err = ps.consume(SEMICOLON, "Expect semicolon after return value")
+    return Return{keyword, value}, nil
 }
 
 func (ps *Parser) while_statement() (Stmt, error) {
@@ -287,7 +304,8 @@ func (ps *Parser) assignment() (Expr, error) {
     if err != nil {
         return nil, err
     }
-    if ps.match(EQUAL) { equals := ps.previous()
+    if ps.match(EQUAL) { 
+        equals := ps.previous()
         value, err := ps.assignment()
         if err != nil {
             return nil, err
@@ -361,7 +379,6 @@ func (ps *Parser) comparison() (Expr, error) {
         if err != nil {
             return nil, err
         }
-        //fmt.Println("Matched binary in comp")
         expr = Binary{expr, op, right}
     }
     return expr, nil

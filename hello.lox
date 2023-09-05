@@ -1,16 +1,7 @@
-var a = 24;
-var b = 43;
-print a + b;
-fun compare(num_one, num_two) {
-    if (num_one < num_two) {
-        print "num_one is smaller";
-    }
-    else if (num_two < num_one) {
-        print "num_two is smaller";
-    }
-    else {
-        print "both are same size";
-    }
+var n = 69;
+fun square(n) {
+    print n * n;
 }
 
-compare(a, a);
+square(n);
+print n;

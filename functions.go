@@ -1,6 +1,7 @@
 package main
 
 import (
+	"fmt"
 	"time"
 )
 
@@ -26,6 +27,20 @@ func (cl Clock) String() string {
 }
 
 
+type ToString struct {}
+
+func (ts ToString) call(globals Environment, arguments []Value) Value {
+    return fmt.Sprintf("%v", arguments[0])
+}
+
+func (ts ToString) arity() int {
+    return 1
+}
+
+func (ts ToString) String() string {
+    return "<native fn>"
+}
+
 // Type representing Lox functions
 type LoxFunction struct {
     declaration Func
@@ -37,6 +52,9 @@ func (lf LoxFunction) call(local_env Environment, arguments []Value) Value {
     }
     err := execute_block(lf.declaration.body, &local_env)
     if err != nil {
+        if return_val, ok := err.(ReturnVal); ok {
+            return return_val.value
+        }
         runtime_error(RuntimeError{message: err.Error()})
         return nil
     }

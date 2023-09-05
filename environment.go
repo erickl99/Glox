@@ -1,6 +1,10 @@
 package main
 
-import "fmt"
+import (
+	"fmt"
+	"strconv"
+	"strings"
+)
 
 type Environment struct {
     enclosing *Environment
@@ -40,4 +44,24 @@ func (env *Environment) assign(name Token, value Value) error {
     }
     msg := fmt.Sprintf("Undefined variable '%v'.", name.lexeme)
     return RuntimeError{message: msg, token: name}
+}
+
+func (env Environment) String() string {
+    curr := &env
+    var result strings.Builder
+    var i = 1
+    for curr != nil {
+        result.WriteString("Level " + strconv.Itoa(i) + ":\n")
+        for k, v := range curr.values {
+            entry := fmt.Sprintf("%s : %v\n", k, v)
+            result.WriteString(entry)
+        }
+        curr = curr.enclosing
+        i++
+        if i > 100 {
+            fmt.Println("In an infinite loop!")
+            panic(1)
+        }
+    }
+    return result.String()
 }
