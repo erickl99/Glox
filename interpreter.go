@@ -101,7 +101,7 @@ func execute(stmt Stmt, curr_env *Environment) error {
             curr_env.define(t.name.lexeme, value)
             return nil
         case Func:
-            lox_func := LoxFunction{t}
+            lox_func := LoxFunction{t, curr_env}
             curr_env.define(t.name.lexeme, lox_func)
             return nil
         case Return:
@@ -194,7 +194,7 @@ func evaluate(exp Expr, curr_env *Environment) (Value, error) {
                     msg := fmt.Sprintf("Expected %d arguments but got %d.", lox_func.arity(), len(arguments))
                     return nil, RuntimeError{msg, t.paren}
                 }
-                return lox_func.call(*curr_env, arguments), nil
+                return lox_func.call(arguments), nil
             } else {
                 return nil, RuntimeError{"Can only call functions and classes", t.paren}
             }

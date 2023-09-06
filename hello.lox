@@ -1,7 +1,10 @@
-var n = 69;
-fun square(n) {
-    print n * n;
-}
+var a = "global";
+{
+  fun showA() {
+    print a;
+  }
 
-square(n);
-print n;
+  showA();
+  var a = "block";
+  showA();
+}

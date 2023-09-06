@@ -6,7 +6,7 @@ import (
 )
 
 type LoxCallable interface {
-    call(globals Environment, arguments []Value) Value
+    call(arguments []Value) Value
     arity() int
 }
 
@@ -44,13 +44,15 @@ func (ts ToString) String() string {
 // Type representing Lox functions
 type LoxFunction struct {
     declaration Func
+    closure *Environment
 }
 
-func (lf LoxFunction) call(local_env Environment, arguments []Value) Value {
+func (lf LoxFunction) call(arguments []Value) Value {
+    func_env := Environment{lf.closure, make(map[string]Value)}
     for i := 0; i < len(lf.declaration.params); i++ {
-        local_env.define(lf.declaration.params[i].lexeme, arguments[i])
+        func_env.define(lf.declaration.params[i].lexeme, arguments[i])
     }
-    err := execute_block(lf.declaration.body, &local_env)
+    err := execute_block(lf.declaration.body, &func_env)
     if err != nil {
         if return_val, ok := err.(ReturnVal); ok {
             return return_val.value
