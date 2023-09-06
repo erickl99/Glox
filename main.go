@@ -66,7 +66,12 @@ func run(source string) {
 		return
 	}
 	if static_error {
-		fmt.Println("Uh oh")
+		fmt.Println("Error occurred while parsing")
+		return
+	}
+	resolve(stmts)
+	if static_error {
+		fmt.Println("Error occurred while resolving")
 		return
 	}
 	interpret(stmts)

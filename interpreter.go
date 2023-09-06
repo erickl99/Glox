@@ -25,6 +25,8 @@ var global_funcs = map[string]Value{"clock": Clock{}, "string": ToString{}}
 
 var globals Environment = Environment{values: global_funcs}
 
+var locals = make(map[Expr]int)
+
 var init_env *Environment = &globals
 
 func interpret(statements []Stmt) {
@@ -151,7 +153,7 @@ func evaluate(exp Expr, curr_env *Environment) (Value, error) {
 			return !is_truthy(right), nil
 		}
 	case Variable:
-		return curr_env.get(t.name)
+		return lookup_var(t.name, t, curr_env)
 	case Logical:
 		left, err := evaluate(t.left, curr_env)
 		if err != nil {
@@ -171,9 +173,13 @@ func evaluate(exp Expr, curr_env *Environment) (Value, error) {
 			return nil, err
 		}
 		// fmt.Println("Going to assign: ", t.name, value)
-		err = curr_env.assign(t.name, value)
-		if err != nil {
-			return nil, err
+		if distance, ok := locals[t]; ok {
+			curr_env.assign_at(distance, t.name, value)
+		} else {
+			err := globals.assign(t.name, value)
+			if err != nil {
+				return nil, err
+			}
 		}
 		return value, nil
 	case Call:
@@ -262,6 +268,20 @@ func evaluate(exp Expr, curr_env *Environment) (Value, error) {
 		}
 	}
 	return nil, RuntimeError{message: "Internal error, unknown expr was passed in"}
+}
+
+func set_scope(expr Expr, depth int) {
+	fmt.Println("About to set scopr for", expr)
+	locals[expr] = depth
+	fmt.Println("Here is locals now:", locals)
+}
+
+func lookup_var(name Token, expr Expr, curr_env *Environment) (Value, error) {
+	if distance, ok := locals[expr]; ok {
+		return curr_env.get_at(distance, name.lexeme), nil
+	} else {
+		return init_env.get(name)
+	}
 }
 
 func is_truthy(val Value) bool {
