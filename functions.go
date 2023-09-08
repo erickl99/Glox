@@ -44,6 +44,7 @@ func (ts ToString) String() string {
 type LoxFunction struct {
 	declaration Func
 	closure     *Environment
+	is_init     bool
 }
 
 func (lf LoxFunction) call(arguments []Value) Value {
@@ -54,12 +55,24 @@ func (lf LoxFunction) call(arguments []Value) Value {
 	err := execute_block(lf.declaration.body, &func_env)
 	if err != nil {
 		if return_val, ok := err.(ReturnVal); ok {
+			if lf.is_init {
+				return lf.closure.get_at(0, "this")
+			}
 			return return_val.value
 		}
 		runtime_error(RuntimeError{message: err.Error()})
 		return nil
 	}
+	if lf.is_init {
+		return lf.closure.get_at(0, "this")
+	}
 	return nil
+}
+
+func (lf LoxFunction) bind(instance LoxInstance) LoxFunction {
+	new_env := Environment{lf.closure, make(map[string]Value)}
+	new_env.define("this", instance)
+	return LoxFunction{lf.declaration, &new_env, lf.is_init}
 }
 
 func (lf LoxFunction) arity() int {

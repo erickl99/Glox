@@ -66,3 +66,11 @@ type Return struct {
 
 func (rn Return) saccept() {
 }
+
+type Class struct {
+	name    Token
+	methods []Func
+}
+
+func (cl Class) saccept() {
+}

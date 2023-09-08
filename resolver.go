@@ -10,8 +10,16 @@ type FunctionType int
 const (
 	NONE FunctionType = iota
 	FUNCTION
+	METHOD
+	INITIALIZER
 )
 
+type ClassType int
+
+const (
+	NOCLASS ClassType = iota
+	NORMALCLASS
+)
 
 type Stack []map[string]bool
 
@@ -41,6 +49,7 @@ func (st *Stack) push(entry map[string]bool) {
 
 var init_scopes *Stack
 var curr_function FunctionType = NONE
+var curr_class ClassType = NOCLASS
 
 func resolve(statements []Stmt) {
 	init_scopes = new(Stack)
@@ -58,6 +67,24 @@ func resolve_stmt(stmt Stmt, scopes *Stack) {
 		begin_scope(scopes)
 		resolve_stmts(t.statements, scopes)
 		end_scope(scopes)
+		return
+	case Class:
+		enclosing_class := curr_class
+		curr_class = NORMALCLASS
+		declare(t.name, scopes)
+		define(t.name, scopes)
+		begin_scope(scopes)
+		scope, _ := scopes.peek()
+		scope["this"] = true
+		for _, method := range t.methods {
+			declaration := METHOD
+			if method.name.lexeme == "init" {
+				declaration = INITIALIZER
+			}
+			resolve_func(method, scopes, declaration)
+		}
+		end_scope(scopes)
+		curr_class = enclosing_class
 		return
 	case Expression:
 		resolve_expr(t.expr, scopes)
@@ -82,6 +109,9 @@ func resolve_stmt(stmt Stmt, scopes *Stack) {
 			token_error(t.keyword, "Can't return from top level routine")
 		}
 		if t.value != nil {
+			if curr_function == INITIALIZER {
+				token_error(t.keyword, "Can't return a value from an initializer")
+			}
 			resolve_expr(t.value, scopes)
 		}
 		return
@@ -117,6 +147,9 @@ func resolve_expr(expr Expr, scopes *Stack) {
 			resolve_expr(arg, scopes)
 		}
 		return
+	case Get:
+		resolve_expr(t.object, scopes)
+		return
 	case Grouping:
 		resolve_expr(t.expression, scopes)
 		return
@@ -125,6 +158,17 @@ func resolve_expr(expr Expr, scopes *Stack) {
 	case Logical:
 		resolve_expr(t.left, scopes)
 		resolve_expr(t.right, scopes)
+		return
+	case Set:
+		resolve_expr(t.value, scopes)
+		resolve_expr(t.object, scopes)
+		return
+	case This:
+		if curr_class != NORMALCLASS {
+			token_error(t.keyword, "Can't use 'this' outside of a class")
+			return
+		}
+		resolve_local(t, t.keyword, scopes)
 		return
 	case Unary:
 		resolve_expr(t.right, scopes)
@@ -158,7 +202,7 @@ func resolve_func(function Func, scopes *Stack, f_type FunctionType) {
 func resolve_local(expr Expr, name Token, scopes *Stack) {
 	for i := len(*scopes) - 1; i > -1; i-- {
 		if _, ok := (*scopes)[i][name.lexeme]; ok {
-			set_scope(expr, len(*scopes) - i - 1)
+			set_scope(expr, len(*scopes)-i-1)
 			return
 		}
 	}

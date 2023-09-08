@@ -66,6 +66,17 @@ func execute(stmt Stmt, curr_env *Environment) error {
 			return err
 		}
 		return nil
+	case Class:
+		curr_env.define(t.name.lexeme, nil)
+		methods := make(map[string]LoxFunction)
+		for _, m := range t.methods {
+			is_init := t.name.lexeme == "init"
+			function := LoxFunction{m, curr_env, is_init}
+			methods[m.name.lexeme] = function
+		}
+		klass := LoxClass{methods, t.name.lexeme}
+		curr_env.assign(t.name, klass)
+		return nil
 	case If:
 		val, err := evaluate(t.condition, curr_env)
 		if err != nil {
@@ -103,7 +114,7 @@ func execute(stmt Stmt, curr_env *Environment) error {
 		curr_env.define(t.name.lexeme, value)
 		return nil
 	case Func:
-		lox_func := LoxFunction{t, curr_env}
+		lox_func := LoxFunction{t, curr_env, false}
 		curr_env.define(t.name.lexeme, lox_func)
 		return nil
 	case Return:
@@ -135,6 +146,37 @@ func evaluate(exp Expr, curr_env *Environment) (Value, error) {
 	switch t := exp.(type) {
 	case Literal:
 		return t.value, nil
+	case Get:
+		object, err := evaluate(t.object, curr_env)
+		if err != nil {
+			return nil, err
+		}
+		if inst, ok := object.(LoxInstance); ok {
+			val, err := inst.get(t.name)
+			if err != nil {
+				return nil, err
+			}
+			return val, nil
+		} else {
+			return nil, RuntimeError{"Only instances have properties", t.name}
+		}
+	case Set:
+		object, err := evaluate(t.object, curr_env)
+		if err != nil {
+			return nil, err
+		}
+		if inst, ok := object.(LoxInstance); ok {
+			val, err := evaluate(t.value, curr_env)
+			if err != nil {
+				return nil, err
+			}
+			inst.set(t.name, val)
+			return val, nil
+		} else {
+			return nil, RuntimeError{"Only instance have fields.", t.name}
+		}
+	case This:
+		return lookup_var(t.keyword, t, curr_env)
 	case Grouping:
 		return evaluate(t.expression, curr_env)
 	case Unary:

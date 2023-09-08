@@ -29,8 +29,8 @@ func (ps *Parser) parse() ([]Stmt, error) {
 }
 
 func (ps *Parser) declaration() Stmt {
-	if ps.match(VAR) {
-		stmt, err := ps.var_declaration()
+	if ps.match(CLASS) {
+		stmt, err := ps.class_declaration()
 		if err != nil {
 			ps.synchronize()
 			return nil
@@ -39,6 +39,14 @@ func (ps *Parser) declaration() Stmt {
 	}
 	if ps.match(FUN) {
 		stmt, err := ps.function("function")
+		if err != nil {
+			ps.synchronize()
+			return nil
+		}
+		return stmt
+	}
+	if ps.match(VAR) {
+		stmt, err := ps.var_declaration()
 		if err != nil {
 			ps.synchronize()
 			return nil
@@ -68,6 +76,30 @@ func (ps *Parser) var_declaration() (Stmt, error) {
 	}
 	ps.consume(SEMICOLON, "Expect ';' after variable declaration")
 	return Var{name, initializer}, nil
+}
+
+func (ps *Parser) class_declaration() (Stmt, error) {
+	name, err := ps.consume(IDENTIFIER, "Expect class name")
+	if err != nil {
+		return nil, err
+	}
+	_, err = ps.consume(LEFT_BRACE, "Expect '{' before class body")
+	if err != nil {
+		return nil, err
+	}
+	var methods []Func
+	for !ps.check(RIGHT_BRACE) && !ps.finished() {
+		md, err := ps.function("method")
+		if err != nil {
+			return nil, err
+		}
+		methods = append(methods, md)
+	}
+	_, err = ps.consume(RIGHT_BRACE, "Expect '}' after class body")
+	if err != nil {
+		return nil, err
+	}
+	return Class{name, methods}, nil
 }
 
 func (ps *Parser) function(kind string) (Func, error) {
@@ -314,6 +346,9 @@ func (ps *Parser) assignment() (Expr, error) {
 			name := assignee.name
 			return Assign{name, value}, nil
 		}
+		if get, ok := expr.(Get); ok {
+			return Set{get.object, get.name, value}, nil
+		}
 		ps.error(equals, "Invalid assignment target")
 	}
 	return expr, nil
@@ -444,6 +479,12 @@ func (ps *Parser) call() (Expr, error) {
 			if err != nil {
 				return nil, err
 			}
+		} else if ps.match(DOT) {
+			name, err := ps.consume(IDENTIFIER, "Expect property name after '.'.")
+			if err != nil {
+				return nil, err
+			}
+			expr = Get{expr, name}
 		} else {
 			break
 		}
@@ -491,7 +532,9 @@ func (ps *Parser) primary() (Expr, error) {
 	if ps.match(IDENTIFIER) {
 		return Variable{ps.previous()}, nil
 	}
-
+	if ps.match(THIS) {
+		return This{ps.previous()}, nil
+	}
 	if ps.match(NUMBER, STRING) {
 		return Literal{ps.previous().literal}, nil
 	}
