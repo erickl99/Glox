@@ -271,9 +271,7 @@ func evaluate(exp Expr, curr_env *Environment) (Value, error) {
 }
 
 func set_scope(expr Expr, depth int) {
-	fmt.Println("About to set scopr for", expr)
 	locals[expr] = depth
-	fmt.Println("Here is locals now:", locals)
 }
 
 func lookup_var(name Token, expr Expr, curr_env *Environment) (Value, error) {

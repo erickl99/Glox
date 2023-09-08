@@ -48,7 +48,6 @@ func resolve(statements []Stmt) {
 }
 func resolve_stmts(statements []Stmt, scopes *Stack) {
 	for _, stmt := range statements {
-		fmt.Println("Going to resolve this stmt", stmt)
 		resolve_stmt(stmt, scopes)
 	}
 }
@@ -64,7 +63,6 @@ func resolve_stmt(stmt Stmt, scopes *Stack) {
 		resolve_expr(t.expr, scopes)
 		return
 	case Func:
-		fmt.Println("Going to resolve function")
 		declare(t.name, scopes)
 		define(t.name, scopes)
 		resolve_func(t, scopes, FUNCTION)
@@ -88,7 +86,6 @@ func resolve_stmt(stmt Stmt, scopes *Stack) {
 		}
 		return
 	case Var:
-		fmt.Println("Resolving a var statement")
 		declare(t.name, scopes)
 		if t.initializer != nil {
 			resolve_expr(t.initializer, scopes)
@@ -133,8 +130,10 @@ func resolve_expr(expr Expr, scopes *Stack) {
 		resolve_expr(t.right, scopes)
 		return
 	case Variable:
-		if scope, ok := scopes.peek(); ok && scope[t.name.lexeme] == false {
-			token_error(t.name, "Can't read local variable in its own initializer")
+		if scope, ok := scopes.peek(); ok {
+			if resolved, ok := scope[t.name.lexeme]; ok && !resolved {
+				token_error(t.name, "Can't read local variable in its own initializer")
+			}
 		}
 		resolve_local(t, t.name, scopes)
 		return
@@ -158,8 +157,10 @@ func resolve_func(function Func, scopes *Stack, f_type FunctionType) {
 
 func resolve_local(expr Expr, name Token, scopes *Stack) {
 	for i := len(*scopes) - 1; i > -1; i-- {
-		set_scope(expr, len(*scopes) - i - 1)
-		return
+		if _, ok := (*scopes)[i][name.lexeme]; ok {
+			set_scope(expr, len(*scopes) - i - 1)
+			return
+		}
 	}
 }
 
