@@ -67,14 +67,30 @@ func execute(stmt Stmt, curr_env *Environment) error {
 		}
 		return nil
 	case Class:
+		var superclass *LoxClass
+		if t.superclass != (Variable{}) {
+			val, err := evaluate(t.superclass, curr_env)
+			if err != nil {
+				return err
+			}
+			if sup, ok := val.(LoxClass); !ok {
+				return RuntimeError{"Superclass must be a class", t.superclass.name}
+			} else {
+				superclass = &sup
+			}
+		}
 		curr_env.define(t.name.lexeme, nil)
+		if t.superclass != (Variable{}) {
+			curr_env = &Environment{curr_env, make(map[string]Value)}
+			curr_env.define("super", superclass)
+		}
 		methods := make(map[string]LoxFunction)
 		for _, m := range t.methods {
 			is_init := t.name.lexeme == "init"
 			function := LoxFunction{m, curr_env, is_init}
 			methods[m.name.lexeme] = function
 		}
-		klass := LoxClass{methods, t.name.lexeme}
+		klass := LoxClass{t.name.lexeme, superclass, methods}
 		curr_env.assign(t.name, klass)
 		return nil
 	case If:
@@ -177,6 +193,16 @@ func evaluate(exp Expr, curr_env *Environment) (Value, error) {
 		}
 	case This:
 		return lookup_var(t.keyword, t, curr_env)
+	case Super:
+		distance := locals[t]
+		superclass := curr_env.get_at(distance, "super").(*LoxClass)
+		object := curr_env.get_at(distance-1, "this").(LoxInstance)
+		method, ok := superclass.find_method(t.method.lexeme)
+		if ok {
+			return method.bind(object), nil
+		} else {
+			return nil, RuntimeError{"Undefined property '" + t.method.lexeme + "'.", t.method}
+		}
 	case Grouping:
 		return evaluate(t.expression, curr_env)
 	case Unary:

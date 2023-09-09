@@ -14,7 +14,7 @@ type LoxCallable interface {
 
 type Clock struct{}
 
-func (cl Clock) call(globals Environment, arguments []Value) Value {
+func (cl Clock) call(arguments []Value) Value {
 	return time.Now().UnixMilli()
 }
 
@@ -28,7 +28,7 @@ func (cl Clock) String() string {
 
 type ToString struct{}
 
-func (ts ToString) call(globals Environment, arguments []Value) Value {
+func (ts ToString) call(arguments []Value) Value {
 	return fmt.Sprintf("%v", arguments[0])
 }
 

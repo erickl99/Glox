@@ -1,13 +1,2 @@
-class Bagel {
-    init() {
-        this.secret = "69";
-    }
-
-    throw() {
-        print "You threw away the bagel!";
-    }
-}
-
-var bagel = Bagel();
-print bagel.secret;
-bagel.throw();
+var a = 69;
+print string(a);

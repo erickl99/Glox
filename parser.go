@@ -83,6 +83,14 @@ func (ps *Parser) class_declaration() (Stmt, error) {
 	if err != nil {
 		return nil, err
 	}
+	var superclass Variable
+	if ps.match(LESS) {
+		_, err = ps.consume(IDENTIFIER, "Expect superclass name")
+		if err != nil {
+			return nil, err
+		}
+		superclass = Variable{ps.previous()}
+	}
 	_, err = ps.consume(LEFT_BRACE, "Expect '{' before class body")
 	if err != nil {
 		return nil, err
@@ -99,7 +107,7 @@ func (ps *Parser) class_declaration() (Stmt, error) {
 	if err != nil {
 		return nil, err
 	}
-	return Class{name, methods}, nil
+	return Class{name, superclass, methods}, nil
 }
 
 func (ps *Parser) function(kind string) (Func, error) {
@@ -518,15 +526,12 @@ func (ps *Parser) finish_call(callee Expr) (Expr, error) {
 
 func (ps *Parser) primary() (Expr, error) {
 	if ps.match(FALSE) {
-		//fmt.Println("Matched false")
 		return Literal{false}, nil
 	}
 	if ps.match(TRUE) {
-		//fmt.Println("Matched true")
 		return Literal{true}, nil
 	}
 	if ps.match(NIL) {
-		//fmt.Println("Matched a nil")
 		return Literal{value: nil}, nil
 	}
 	if ps.match(IDENTIFIER) {
@@ -534,6 +539,18 @@ func (ps *Parser) primary() (Expr, error) {
 	}
 	if ps.match(THIS) {
 		return This{ps.previous()}, nil
+	}
+	if ps.match(SUPER) {
+		keyword := ps.previous()
+		_, err := ps.consume(DOT, "Expect '.' after 'super'.")
+		if err != nil {
+			return nil, err
+		}
+		method, err := ps.consume(IDENTIFIER, "Expect superclass method name")
+		if err != nil {
+			return nil, err
+		}
+		return Super{keyword, method}, nil
 	}
 	if ps.match(NUMBER, STRING) {
 		return Literal{ps.previous().literal}, nil

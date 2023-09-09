@@ -19,6 +19,7 @@ type ClassType int
 const (
 	NOCLASS ClassType = iota
 	NORMALCLASS
+	SUBCLASS
 )
 
 type Stack []map[string]bool
@@ -73,6 +74,18 @@ func resolve_stmt(stmt Stmt, scopes *Stack) {
 		curr_class = NORMALCLASS
 		declare(t.name, scopes)
 		define(t.name, scopes)
+		if t.superclass != (Variable{}) && t.superclass.name.lexeme == t.name.lexeme {
+			token_error(t.name, "A class cannot inherit from itself")
+		}
+		if t.superclass != (Variable{}) {
+			curr_class = SUBCLASS
+			resolve_expr(t.superclass, scopes)
+		}
+		if t.superclass != (Variable{}) {
+			begin_scope(scopes)
+			scope, _ := scopes.peek()
+			scope["super"] = true
+		}
 		begin_scope(scopes)
 		scope, _ := scopes.peek()
 		scope["this"] = true
@@ -84,6 +97,9 @@ func resolve_stmt(stmt Stmt, scopes *Stack) {
 			resolve_func(method, scopes, declaration)
 		}
 		end_scope(scopes)
+		if t.superclass != (Variable{}) {
+			end_scope(scopes)
+		}
 		curr_class = enclosing_class
 		return
 	case Expression:
@@ -162,6 +178,14 @@ func resolve_expr(expr Expr, scopes *Stack) {
 	case Set:
 		resolve_expr(t.value, scopes)
 		resolve_expr(t.object, scopes)
+		return
+	case Super:
+		if curr_class == NOCLASS {
+			token_error(t.keyword, "Can't use 'super' outside of a class")
+		} else if curr_class == NORMALCLASS {
+			token_error(t.keyword, "Can't use 'super' in a class with no superclasses")
+		}
+		resolve_local(t, t.keyword, scopes)
 		return
 	case This:
 		if curr_class != NORMALCLASS {

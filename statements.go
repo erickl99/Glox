@@ -68,8 +68,9 @@ func (rn Return) saccept() {
 }
 
 type Class struct {
-	name    Token
-	methods []Func
+	name       Token
+	superclass Variable
+	methods    []Func
 }
 
 func (cl Class) saccept() {
